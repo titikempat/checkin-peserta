@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SCAN CHECK-IN PESERTA</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background:#06152d;
+color:white;
+padding:15px;
+}
+
+.container{
+max-width:650px;
+margin:auto;
+}
+
+.header{
+text-align:center;
+margin-bottom:25px;
+}
+
+.header h1{
+font-size:30px;
+color:#f6c453;
+margin-bottom:10px;
+}
+
+.header p{
+color:#ccc;
+font-size:14px;
+}
+
+.card{
+background:#0d2347;
+border-radius:24px;
+padding:20px;
+box-shadow:0 0 35px rgba(0,0,0,0.35);
+margin-bottom:20px;
+}
+
+#reader{
+width:100%;
+overflow:hidden;
+border-radius:18px;
+}
+
+.loading{
+display:none;
+margin-top:20px;
+text-align:center;
+color:#f6c453;
+font-size:15px;
+}
+
+.result{
+display:none;
+margin-top:20px;
+padding:22px;
+border-radius:20px;
+line-height:2;
+animation:fadeIn 0.3s ease;
+}
+
+.success{
+background:#10391e;
+border:2px solid #27d46b;
+}
+
+.warning{
+background:#4a3200;
+border:2px solid #ffb300;
+}
+
+.error{
+background:#4a1111;
+border:2px solid #ff4d4d;
+}
+
+.result h2{
+margin-bottom:15px;
+font-size:24px;
+}
+
+.badge{
+display:inline-block;
+padding:7px 14px;
+border-radius:999px;
+font-size:13px;
+font-weight:700;
+margin-top:8px;
+}
+
+.badge-success{
+background:#27d46b;
+color:#06152d;
+}
+
+.badge-warning{
+background:#ffb300;
+color:#06152d;
+}
+
+.info{
+margin-top:15px;
+font-size:15px;
+line-height:2;
+}
+
+.stats{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+margin-top:20px;
+}
+
+.stat-box{
+background:#132f5e;
+padding:18px;
+border-radius:18px;
+text-align:center;
+}
+
+.stat-box h3{
+font-size:14px;
+color:#ccc;
+margin-bottom:10px;
+}
+
+.stat-box p{
+font-size:28px;
+font-weight:700;
+color:#f6c453;
+}
+
+.scan-status{
+margin-top:20px;
+text-align:center;
+font-size:14px;
+color:#ccc;
+}
+
+@keyframes fadeIn{
+from{
+opacity:0;
+transform:translateY(10px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@media(max-width:768px){
+
+.header h1{
+font-size:24px;
+}
+
+.card{
+padding:15px;
+}
+
+.stats{
+grid-template-columns:1fr;
+}
+
+.result h2{
+font-size:20px;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<h1>🏃 SCAN CHECK-IN</h1>
+
+<p>
+RUN FOR YOUR LIFE 2026
+</p>
+
+</div>
+
+<div class="card">
+
+<div id="reader"></div>
+
+<div class="scan-status">
+Arahkan kamera ke QR Code peserta
+</div>
+
+<div class="loading" id="loading">
+⏳ Memproses check-in peserta...
+</div>
+
+<div class="result" id="resultBox">
+<div id="resultContent"></div>
+</div>
+
+<div class="stats">
+
+<div class="stat-box">
+<h3>Total Check-In</h3>
+<p id="totalCheckin">0</p>
+</div>
+
+<div class="stat-box">
+<h3>Status Scanner</h3>
+<p id="scannerStatus">AKTIF</p>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+// ======================================
+// WEB APP URL
+// ======================================
+
+const WEBAPP_URL =
+"https://script.google.com/macros/s/AKfycbwr5NReGwYtYWt7hvx4Kw_LwAEZ2d0hVj3WGUPxfYzDXfFO8tno8w-PBO026at7ZNAcaw/exec";
+
+// ======================================
+// AUDIO
+// ======================================
+
+const successSound =
+new Audio(
+"https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
+);
+
+const warningSound =
+new Audio(
+"https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+);
+
+// ======================================
+// TOTAL CHECKIN
+// ======================================
+
+let totalCheckin = 0;
+
+// ======================================
+// UPDATE TOTAL
+// ======================================
+
+function updateTotal(){
+
+document.getElementById("totalCheckin")
+.innerText = totalCheckin;
+
+}
+
+// ======================================
+// SHOW RESULT
+// ======================================
+
+function showResult(type, html){
+
+const box =
+document.getElementById("resultBox");
+
+box.style.display = "block";
+
+box.className =
+`result ${type}`;
+
+document.getElementById("resultContent")
+.innerHTML = html;
+
+}
+
+// ======================================
+// PROCESS QR
+// ======================================
+
+async function onScanSuccess(decodedText){
+
+// ======================================
+// STOP SCAN SEMENTARA
+// ======================================
+
+html5QrCode.pause();
+
+document.getElementById("loading")
+.style.display = "block";
+
+// ======================================
+// PARSE QR
+// ======================================
+
+const parts =
+decodedText.split("|");
+
+if(parts.length < 2){
+
+document.getElementById("loading")
+.style.display = "none";
+
+warningSound.play();
+
+showResult(
+"error",
+`
+<h2>❌ QR TIDAK VALID</h2>
+QR Code tidak dikenali
+`
+);
+
+setTimeout(()=>{
+
+html5QrCode.resume();
+
+},2000);
+
+return;
+
+}
+
+const registerId =
+parts[1];
+
+try{
+
+// ======================================
+// UPDATE CHECK-IN
+// ======================================
+
+const response =
+await fetch(WEBAPP_URL,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"text/plain;charset=utf-8"
+},
+
+body:JSON.stringify({
+
+action:"checkin",
+registerId:registerId
+
+})
+
+});
+
+const res =
+await response.json();
+
+document.getElementById("loading")
+.style.display = "none";
+
+// ======================================
+// SUCCESS
+// ======================================
+
+if(res.status == "success"){
+
+successSound.play();
+
+totalCheckin++;
+
+updateTotal();
+
+showResult(
+"success",
+`
+
+<h2>✅ CHECK-IN BERHASIL</h2>
+
+<div class="badge badge-success">
+PESERTA VALID
+</div>
+
+<div class="info">
+
+<b>Nama :</b>
+${res.nama}<br>
+
+<b>BIB :</b>
+${res.bib}<br>
+
+<b>Kategori :</b>
+${res.kategori}<br>
+
+<b>Register ID :</b>
+${registerId}
+
+</div>
+
+`
+);
+
+}
+
+// ======================================
+// SUDAH CHECKIN
+// ======================================
+
+else if(res.status == "already"){
+
+warningSound.play();
+
+showResult(
+"warning",
+`
+
+<h2>⚠️ SUDAH CHECK-IN</h2>
+
+<div class="badge badge-warning">
+DOUBLE SCAN
+</div>
+
+<div class="info">
+
+<b>Nama :</b>
+${res.nama}<br>
+
+<b>BIB :</b>
+${res.bib}<br>
+
+Peserta sudah melakukan check-in sebelumnya.
+
+</div>
+
+`
+);
+
+}
+
+// ======================================
+// NOT FOUND
+// ======================================
+
+else{
+
+warningSound.play();
+
+showResult(
+"error",
+`
+
+<h2>❌ DATA TIDAK DITEMUKAN</h2>
+
+<div class="info">
+
+Register ID :
+${registerId}
+
+</div>
+
+`
+);
+
+}
+
+}catch(err){
+
+document.getElementById("loading")
+.style.display = "none";
+
+warningSound.play();
+
+showResult(
+"error",
+`
+
+<h2>❌ ERROR</h2>
+
+<div class="info">
+
+${err.message}
+
+</div>
+
+`
+);
+
+}
+
+// ======================================
+// RESUME SCAN
+// ======================================
+
+setTimeout(()=>{
+
+html5QrCode.resume();
+
+},3000);
+
+}
+
+// ======================================
+// INIT SCANNER
+// ======================================
+
+const html5QrCode =
+new Html5Qrcode("reader");
+
+Html5Qrcode.getCameras()
+.then(devices => {
+
+if(devices && devices.length){
+
+html5QrCode.start(
+
+{ facingMode:"environment" },
+
+{
+fps:10,
+qrbox:{
+width:250,
+height:250
+}
+},
+
+onScanSuccess
+
+);
+
+}
+
+})
+.catch(err=>{
+
+alert(err);
+
+});
+
+</script>
+
+</body>
+</html>
