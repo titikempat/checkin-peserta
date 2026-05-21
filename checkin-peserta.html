@@ -9,7 +9,6 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- QR SCANNER -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
 <style>
@@ -24,7 +23,7 @@ font-family:'Poppins',sans-serif;
 body{
 background:#06152d;
 color:white;
-padding:15px;
+padding:20px;
 }
 
 .container{
@@ -53,15 +52,37 @@ background:#0d2347;
 border-radius:24px;
 padding:20px;
 box-shadow:0 0 35px rgba(0,0,0,0.35);
-margin-bottom:20px;
 }
 
 #reader{
 width:100%;
-overflow:hidden;
 border-radius:18px;
-background:#000;
-min-height:300px;
+overflow:hidden;
+display:none;
+margin-top:20px;
+}
+
+.start-btn{
+
+width:100%;
+padding:18px;
+border:none;
+border-radius:18px;
+
+background:#f6c453;
+color:#06152d;
+
+font-size:18px;
+font-weight:700;
+
+cursor:pointer;
+
+transition:0.3s;
+
+}
+
+.start-btn:hover{
+transform:scale(1.02);
 }
 
 .loading{
@@ -69,16 +90,14 @@ display:none;
 margin-top:20px;
 text-align:center;
 color:#f6c453;
-font-size:15px;
 }
 
 .result{
 display:none;
 margin-top:20px;
-padding:22px;
-border-radius:20px;
+padding:20px;
+border-radius:18px;
 line-height:2;
-animation:fadeIn 0.3s ease;
 }
 
 .success{
@@ -96,18 +115,13 @@ background:#4a1111;
 border:2px solid #ff4d4d;
 }
 
-.result h2{
-margin-bottom:15px;
-font-size:24px;
-}
-
 .badge{
 display:inline-block;
 padding:7px 14px;
 border-radius:999px;
 font-size:13px;
 font-weight:700;
-margin-top:8px;
+margin-top:10px;
 }
 
 .badge-success{
@@ -122,7 +136,6 @@ color:#06152d;
 
 .info{
 margin-top:15px;
-font-size:15px;
 line-height:2;
 }
 
@@ -152,47 +165,14 @@ font-weight:700;
 color:#f6c453;
 }
 
-.scan-status{
-margin-top:20px;
-text-align:center;
-font-size:14px;
-color:#ccc;
-}
-
-@keyframes fadeIn{
-
-from{
-opacity:0;
-transform:translateY(10px);
-}
-
-to{
-opacity:1;
-transform:translateY(0);
-}
-
-}
-
 @media(max-width:768px){
 
 .header h1{
 font-size:24px;
 }
 
-.card{
-padding:15px;
-}
-
 .stats{
 grid-template-columns:1fr;
-}
-
-.result h2{
-font-size:20px;
-}
-
-#reader{
-min-height:250px;
 }
 
 }
@@ -217,11 +197,17 @@ RUN FOR YOUR LIFE 2026
 
 <div class="card">
 
-<div id="reader"></div>
+<button
+class="start-btn"
+onclick="mulaiScanner()"
+id="startBtn"
+>
 
-<div class="scan-status" id="scannerText">
-Mengaktifkan kamera...
-</div>
+📷 MULAI SCANNER QR
+
+</button>
+
+<div id="reader"></div>
 
 <div class="loading" id="loading">
 ⏳ Memproses check-in peserta...
@@ -240,7 +226,7 @@ Mengaktifkan kamera...
 
 <div class="stat-box">
 <h3>Status Scanner</h3>
-<p id="scannerStatus">LOADING</p>
+<p id="scannerStatus">SIAP</p>
 </div>
 
 </div>
@@ -273,10 +259,16 @@ new Audio(
 );
 
 // ======================================
-// TOTAL CHECK-IN
+// GLOBAL
 // ======================================
 
 let totalCheckin = 0;
+let html5QrCode;
+let scannerActive = false;
+
+// ======================================
+// UPDATE TOTAL
+// ======================================
 
 function updateTotal(){
 
@@ -305,28 +297,21 @@ document.getElementById("resultContent")
 }
 
 // ======================================
-// QR SCANNER
-// ======================================
-
-let html5QrCode;
-let scanning = false;
-
-// ======================================
 // START SCANNER
 // ======================================
 
-async function startScanner(){
-
-if(scanning) return;
+async function mulaiScanner(){
 
 try{
 
+document.getElementById("reader")
+.style.display = "block";
+
+document.getElementById("startBtn")
+.style.display = "none";
+
 document.getElementById("scannerStatus")
 .innerText = "AKTIF";
-
-document.getElementById("scannerText")
-.innerText =
-"Arahkan kamera ke QR peserta";
 
 html5QrCode =
 new Html5Qrcode("reader");
@@ -349,21 +334,17 @@ onScanSuccess
 
 );
 
-scanning = true;
+scannerActive = true;
 
 }catch(err){
-
-document.getElementById("scannerStatus")
-.innerText = "ERROR";
-
-document.getElementById("scannerText")
-.innerText =
-"Gagal mengakses kamera";
 
 alert(
 "Gagal membuka kamera:\n\n" +
 err
 );
+
+document.getElementById("scannerStatus")
+.innerText = "ERROR";
 
 }
 
@@ -375,28 +356,20 @@ err
 
 async function stopScanner(){
 
-try{
-
-if(scanning){
+if(scannerActive){
 
 await html5QrCode.stop();
 
 await html5QrCode.clear();
 
-scanning = false;
-
-}
-
-}catch(err){
-
-console.log(err);
+scannerActive = false;
 
 }
 
 }
 
 // ======================================
-// SCAN SUCCESS
+// SUCCESS SCAN
 // ======================================
 
 async function onScanSuccess(decodedText){
@@ -426,16 +399,12 @@ showResult(
 <h2>❌ QR TIDAK VALID</h2>
 
 <div class="info">
-QR Code tidak dikenali
+QR tidak dikenali
 </div>
 `
 );
 
-setTimeout(()=>{
-
-startScanner();
-
-},2500);
+resetScanner();
 
 return;
 
@@ -445,10 +414,6 @@ const registerId =
 parts[1];
 
 try{
-
-// ======================================
-// FETCH API
-// ======================================
 
 const response =
 await fetch(WEBAPP_URL,{
@@ -518,7 +483,7 @@ ${registerId}
 }
 
 // ======================================
-// ALREADY CHECK-IN
+// ALREADY
 // ======================================
 
 else if(res.status == "already"){
@@ -541,9 +506,7 @@ DOUBLE SCAN
 ${res.nama}<br>
 
 <b>BIB :</b>
-${res.bib}<br>
-
-Peserta sudah check-in sebelumnya.
+${res.bib}
 
 </div>
 
@@ -602,27 +565,30 @@ ${err.message}
 
 }
 
-// ======================================
-// RESTART SCANNER
-// ======================================
-
-setTimeout(()=>{
-
-startScanner();
-
-},3000);
+resetScanner();
 
 }
 
 // ======================================
-// AUTO START
+// RESET SCANNER
 // ======================================
 
-window.onload = function(){
+function resetScanner(){
 
-startScanner();
+setTimeout(()=>{
 
-};
+document.getElementById("reader")
+.style.display = "none";
+
+document.getElementById("startBtn")
+.style.display = "block";
+
+document.getElementById("scannerStatus")
+.innerText = "SIAP";
+
+},3000);
+
+}
 
 </script>
 
