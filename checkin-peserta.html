@@ -9,7 +9,8 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<!-- QR SCANNER -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
 <style>
 
@@ -59,6 +60,8 @@ margin-bottom:20px;
 width:100%;
 overflow:hidden;
 border-radius:18px;
+background:#000;
+min-height:300px;
 }
 
 .loading{
@@ -157,14 +160,17 @@ color:#ccc;
 }
 
 @keyframes fadeIn{
+
 from{
 opacity:0;
 transform:translateY(10px);
 }
+
 to{
 opacity:1;
 transform:translateY(0);
 }
+
 }
 
 @media(max-width:768px){
@@ -183,6 +189,10 @@ grid-template-columns:1fr;
 
 .result h2{
 font-size:20px;
+}
+
+#reader{
+min-height:250px;
 }
 
 }
@@ -209,8 +219,8 @@ RUN FOR YOUR LIFE 2026
 
 <div id="reader"></div>
 
-<div class="scan-status">
-Arahkan kamera ke QR Code peserta
+<div class="scan-status" id="scannerText">
+Mengaktifkan kamera...
 </div>
 
 <div class="loading" id="loading">
@@ -230,7 +240,7 @@ Arahkan kamera ke QR Code peserta
 
 <div class="stat-box">
 <h3>Status Scanner</h3>
-<p id="scannerStatus">AKTIF</p>
+<p id="scannerStatus">LOADING</p>
 </div>
 
 </div>
@@ -263,7 +273,7 @@ new Audio(
 );
 
 // ======================================
-// TOTAL CHECKIN
+// TOTAL CHECK-IN
 // ======================================
 
 let totalCheckin = 0;
@@ -298,9 +308,7 @@ document.getElementById("resultContent")
 // QR SCANNER
 // ======================================
 
-let html5QrCode =
-new Html5Qrcode("reader");
-
+let html5QrCode;
 let scanning = false;
 
 // ======================================
@@ -311,9 +319,17 @@ async function startScanner(){
 
 if(scanning) return;
 
-scanning = true;
-
 try{
+
+document.getElementById("scannerStatus")
+.innerText = "AKTIF";
+
+document.getElementById("scannerText")
+.innerText =
+"Arahkan kamera ke QR peserta";
+
+html5QrCode =
+new Html5Qrcode("reader");
 
 await html5QrCode.start(
 
@@ -333,12 +349,21 @@ onScanSuccess
 
 );
 
-document.getElementById("scannerStatus")
-.innerText = "AKTIF";
+scanning = true;
 
 }catch(err){
 
-alert(err);
+document.getElementById("scannerStatus")
+.innerText = "ERROR";
+
+document.getElementById("scannerText")
+.innerText =
+"Gagal mengakses kamera";
+
+alert(
+"Gagal membuka kamera:\n\n" +
+err
+);
 
 }
 
@@ -356,6 +381,8 @@ if(scanning){
 
 await html5QrCode.stop();
 
+await html5QrCode.clear();
+
 scanning = false;
 
 }
@@ -369,14 +396,10 @@ console.log(err);
 }
 
 // ======================================
-// ON SCAN SUCCESS
+// SCAN SUCCESS
 // ======================================
 
 async function onScanSuccess(decodedText){
-
-// ======================================
-// STOP DULU
-// ======================================
 
 await stopScanner();
 
@@ -401,7 +424,10 @@ showResult(
 "error",
 `
 <h2>❌ QR TIDAK VALID</h2>
+
+<div class="info">
 QR Code tidak dikenali
+</div>
 `
 );
 
@@ -409,7 +435,7 @@ setTimeout(()=>{
 
 startScanner();
 
-},2000);
+},2500);
 
 return;
 
@@ -421,7 +447,7 @@ parts[1];
 try{
 
 // ======================================
-// FETCH CHECK-IN
+// FETCH API
 // ======================================
 
 const response =
@@ -430,13 +456,12 @@ await fetch(WEBAPP_URL,{
 method:"POST",
 
 headers:{
-"Content-Type":"application/json"
+"Content-Type":"text/plain;charset=utf-8"
 },
 
 body:JSON.stringify({
 
 action:"checkin",
-
 registerId:registerId
 
 })
@@ -493,7 +518,7 @@ ${registerId}
 }
 
 // ======================================
-// SUDAH CHECKIN
+// ALREADY CHECK-IN
 // ======================================
 
 else if(res.status == "already"){
@@ -593,7 +618,11 @@ startScanner();
 // AUTO START
 // ======================================
 
+window.onload = function(){
+
 startScanner();
+
+};
 
 </script>
 
