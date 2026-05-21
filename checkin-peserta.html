@@ -268,10 +268,6 @@ new Audio(
 
 let totalCheckin = 0;
 
-// ======================================
-// UPDATE TOTAL
-// ======================================
-
 function updateTotal(){
 
 document.getElementById("totalCheckin")
@@ -299,16 +295,90 @@ document.getElementById("resultContent")
 }
 
 // ======================================
-// PROCESS QR
+// QR SCANNER
+// ======================================
+
+let html5QrCode =
+new Html5Qrcode("reader");
+
+let scanning = false;
+
+// ======================================
+// START SCANNER
+// ======================================
+
+async function startScanner(){
+
+if(scanning) return;
+
+scanning = true;
+
+try{
+
+await html5QrCode.start(
+
+{
+facingMode:"environment"
+},
+
+{
+fps:10,
+qrbox:{
+width:250,
+height:250
+}
+},
+
+onScanSuccess
+
+);
+
+document.getElementById("scannerStatus")
+.innerText = "AKTIF";
+
+}catch(err){
+
+alert(err);
+
+}
+
+}
+
+// ======================================
+// STOP SCANNER
+// ======================================
+
+async function stopScanner(){
+
+try{
+
+if(scanning){
+
+await html5QrCode.stop();
+
+scanning = false;
+
+}
+
+}catch(err){
+
+console.log(err);
+
+}
+
+}
+
+// ======================================
+// ON SCAN SUCCESS
 // ======================================
 
 async function onScanSuccess(decodedText){
 
 // ======================================
-// STOP SCAN SEMENTARA
+// STOP DULU
 // ======================================
 
-html5QrCode.pause();
+await stopScanner();
 
 document.getElementById("loading")
 .style.display = "block";
@@ -337,7 +407,7 @@ QR Code tidak dikenali
 
 setTimeout(()=>{
 
-html5QrCode.resume();
+startScanner();
 
 },2000);
 
@@ -351,7 +421,7 @@ parts[1];
 try{
 
 // ======================================
-// UPDATE CHECK-IN
+// FETCH CHECK-IN
 // ======================================
 
 const response =
@@ -360,12 +430,13 @@ await fetch(WEBAPP_URL,{
 method:"POST",
 
 headers:{
-"Content-Type":"text/plain;charset=utf-8"
+"Content-Type":"application/json"
 },
 
 body:JSON.stringify({
 
 action:"checkin",
+
 registerId:registerId
 
 })
@@ -447,7 +518,7 @@ ${res.nama}<br>
 <b>BIB :</b>
 ${res.bib}<br>
 
-Peserta sudah melakukan check-in sebelumnya.
+Peserta sudah check-in sebelumnya.
 
 </div>
 
@@ -507,53 +578,22 @@ ${err.message}
 }
 
 // ======================================
-// RESUME SCAN
+// RESTART SCANNER
 // ======================================
 
 setTimeout(()=>{
 
-html5QrCode.resume();
+startScanner();
 
 },3000);
 
 }
 
 // ======================================
-// INIT SCANNER
+// AUTO START
 // ======================================
 
-const html5QrCode =
-new Html5Qrcode("reader");
-
-Html5Qrcode.getCameras()
-.then(devices => {
-
-if(devices && devices.length){
-
-html5QrCode.start(
-
-{ facingMode:"environment" },
-
-{
-fps:10,
-qrbox:{
-width:250,
-height:250
-}
-},
-
-onScanSuccess
-
-);
-
-}
-
-})
-.catch(err=>{
-
-alert(err);
-
-});
+startScanner();
 
 </script>
 
